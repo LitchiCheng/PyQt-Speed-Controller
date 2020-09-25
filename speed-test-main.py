@@ -4,8 +4,8 @@ import os,sys,time,socket,struct,keyboard
 import message_navigation_pb2
 speed_data = message_navigation_pb2.Message_NavSpeed()
 
-F4kCommandPort = 15003
-F4kAddr = ('192.168.192.4', F4kCommandPort)
+F4kCommandPort = 8000
+F4kAddr = ('192.168.192.5', F4kCommandPort)
 
 class Ui_MainWindow(object):
     
@@ -60,10 +60,10 @@ class Ui_MainWindow(object):
         self.ln_w = QtWidgets.QLCDNumber(self.centralwidget)
         self.ln_w.setGeometry(QtCore.QRect(30, 60, 64, 23))
         self.ln_w.setObjectName("ln_w")
-        self.pushButton = QtWidgets.QPushButton("EDU", self.centralwidget)
+        self.pushButton = QtWidgets.QPushButton("...", self.centralwidget)
         self.pushButton.setGeometry(QtCore.QRect(210, 20, 91, 19))
         self.pushButton.setObjectName("pushButton")
-        self.pushButton_3 = QtWidgets.QPushButton("RESET", self.centralwidget)
+        self.pushButton_3 = QtWidgets.QPushButton("....", self.centralwidget)
         self.pushButton_3.setGeometry(QtCore.QRect(210, 50, 91, 31))
         self.pushButton_3.setObjectName("pushButton_3")
         MainWindow.setCentralWidget(self.centralwidget)
@@ -110,46 +110,54 @@ class Ui_MainWindow(object):
     def pbW(self):
         if self.pb_w.isDown() or keyboard.is_pressed('w'): 
             self.temp_x = self.temp_x + 0.05
-            if self.temp_x >= 0.5:
-                self.temp_x = 0.5
+            if self.temp_x >= 2.0:
+                self.temp_x = 2.0
             speed_data.x = self.temp_x
             print("temp_x is " + str(self.temp_x))
         elif (not self.pb_s.isDown()) and (not keyboard.is_pressed('s')):
             self.temp_x = 0.0
             speed_data.x = self.temp_x
+        self.ln_x.display(speed_data.x)
+        self.ln_w.display(speed_data.rotate)
     
     def pbS(self):
         if self.pb_s.isDown() or keyboard.is_pressed('s'): 
             self.temp_x = self.temp_x - 0.05
-            if self.temp_x <= -0.5:
-                self.temp_x = -0.5
+            if self.temp_x <= -2.0:
+                self.temp_x = -2.0
             speed_data.x = self.temp_x
             print("temp_x is " + str(self.temp_x))
         elif (not self.pb_w.isDown()) and (not keyboard.is_pressed('w')):
             self.temp_x = 0.0
             speed_data.x = self.temp_x
+        self.ln_x.display(speed_data.x)
+        self.ln_w.display(speed_data.rotate)
 
     def pbA(self):
         if self.pb_a.isDown() or keyboard.is_pressed('a'): 
             self.temp_rotate = self.temp_rotate + 0.05
-            if self.temp_rotate >= 0.5:
-                self.temp_rotate = 0.5
+            if self.temp_rotate >= 2.0:
+                self.temp_rotate = 2.0
             speed_data.rotate = self.temp_rotate
             print("temp_rotate is " + str(self.temp_rotate))
         elif (not self.pb_d.isDown()) and (not keyboard.is_pressed('d')):
             self.temp_rotate = 0.0
             speed_data.rotate = self.temp_rotate
+        self.ln_x.display(speed_data.x)
+        self.ln_w.display(speed_data.rotate)
 
     def pbD(self):
         if self.pb_d.isDown()  or keyboard.is_pressed('d'): 
             self.temp_rotate = self.temp_rotate - 0.05
-            if self.temp_rotate <= -0.5:
-                self.temp_rotate = -0.5
+            if self.temp_rotate <= -2.0:
+                self.temp_rotate = -2.0
             speed_data.rotate = self.temp_rotate
             print("temp_rotate is " + str(self.temp_rotate))
         elif (not self.pb_a.isDown()) and (not keyboard.is_pressed('a')):
             self.temp_rotate = 0.0
             speed_data.rotate = self.temp_rotate
+        self.ln_x.display(speed_data.x)
+        self.ln_w.display(speed_data.rotate)
 
 class sendSpeedThread(QThread):
     signal = pyqtSignal()    
@@ -158,10 +166,10 @@ class sendSpeedThread(QThread):
             so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
             so.settimeout(0.5)
             while(1):
-                speed_data_string = speed_data.SerializeToString()
+                
                 self.signal.emit()
                 time.sleep(0.1)
-                so.sendto(struct.pack('<I' + str(len(speed_data_string)) + 's', 0x00001034, speed_data_string), F4kAddr)
+                so.sendto(struct.pack("<dd", speed_data.x, speed_data.rotate), F4kAddr)
             so.close()
 
 class listenWThread(QThread):
