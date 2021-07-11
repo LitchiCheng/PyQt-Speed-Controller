@@ -1,17 +1,18 @@
 from PyQt5 import QtCore, QtGui, QtWidgets
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
 import os,sys,time,socket,struct,keyboard
+from google.protobuf.reflection import ParseMessage
 import message_navigation_pb2
 speed_data = message_navigation_pb2.Message_NavSpeed()
 
-F4kCommandPort = 8000
-F4kAddr = ('192.168.192.5', F4kCommandPort)
+TargetIP = "192.168.31.144"
+TargetPort = 8000
 
 class Ui_MainWindow(object):
     
     def setupUi(self, MainWindow):
         MainWindow.setObjectName("MainWindow")
-        MainWindow.resize(310, 211)
+        MainWindow.resize(410, 211)
         self.temp_x = 0.0
         self.temp_rotate = 0.0
         self.centralwidget = QtWidgets.QWidget(MainWindow)
@@ -60,12 +61,15 @@ class Ui_MainWindow(object):
         self.ln_w = QtWidgets.QLCDNumber(self.centralwidget)
         self.ln_w.setGeometry(QtCore.QRect(30, 60, 64, 23))
         self.ln_w.setObjectName("ln_w")
-        self.pushButton = QtWidgets.QPushButton("...", self.centralwidget)
-        self.pushButton.setGeometry(QtCore.QRect(210, 20, 91, 19))
-        self.pushButton.setObjectName("pushButton")
-        self.pushButton_3 = QtWidgets.QPushButton("....", self.centralwidget)
-        self.pushButton_3.setGeometry(QtCore.QRect(210, 50, 91, 31))
+        self.ip_address_edit = QtWidgets.QLineEdit("192.168.192.111",self.centralwidget)
+        self.ip_address_edit.setGeometry(QtCore.QRect(210, 20, 200, 30))
+        self.ip_address_edit.setObjectName("ip_address")
+        self.pushButton_3 = QtWidgets.QPushButton("connect", self.centralwidget)
+        self.pushButton_3.setGeometry(QtCore.QRect(310, 50, 91, 30))
         self.pushButton_3.setObjectName("pushButton_3")
+        self.port_edit = QtWidgets.QLineEdit("777",self.centralwidget)
+        self.port_edit.setGeometry(QtCore.QRect(210, 50, 91, 31))
+        self.port_edit.setObjectName("port")
         MainWindow.setCentralWidget(self.centralwidget)
         self.statusbar = QtWidgets.QStatusBar(MainWindow)
         self.statusbar.setObjectName("statusbar")
@@ -73,8 +77,7 @@ class Ui_MainWindow(object):
 
         self.retranslateUi(MainWindow)
         QtCore.QMetaObject.connectSlotsByName(MainWindow)
-        self.pushButton.clicked.connect(self.eduMode)
-        self.pushButton_3.clicked.connect(self.reset407)
+        self.pushButton_3.clicked.connect(self.setIP)
         self.thread1 = sendSpeedThread()
         self.thread1.start()
 
@@ -85,21 +88,12 @@ class Ui_MainWindow(object):
         self.thread2.signal.connect(self.pbD)
         self.thread2.start()
     
-    def reset407(self):
-        arg = [0xffffffff]
-        msg = struct.pack('<' + str(len(arg) + 1) + 'I', 0x0000101E, *arg)
-        so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        so.settimeout(0.05)
-        so.sendto(msg, F4kAddr)
-        so.close()
-
-    def eduMode(self):
-        arg = [0xffffffff]
-        msg = struct.pack('<' + str(len(arg) + 1) + 'I', 0x00001075, *arg)
-        so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        so.settimeout(0.05)
-        so.sendto(msg, F4kAddr)
-        so.close()
+    def setIP(self):
+        global TargetIP
+        TargetIP = self.ip_address_edit.text()
+        global TargetPort
+        TargetPort = int(self.port_edit.text())
+        print("%s %d" % (TargetIP, TargetPort))
 
     def retranslateUi(self, MainWindow):
         _translate = QtCore.QCoreApplication.translate
@@ -163,13 +157,13 @@ class sendSpeedThread(QThread):
     signal = pyqtSignal()    
     def run(self):
     	while(1):   
-            so = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-            so.settimeout(0.5)
+            so = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
+            so.connect((TargetIP, TargetPort))
             while(1):
-                
                 self.signal.emit()
                 time.sleep(0.1)
-                so.sendto(struct.pack("<dd", speed_data.x, speed_data.rotate), F4kAddr)
+                so.send(struct.pack("<dd", speed_data.x, speed_data.rotate))
+                
             so.close()
 
 class listenWThread(QThread):
